@@ -1,6 +1,8 @@
 import time
+import json
 import pandas as pd
 
+from job import Job
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -11,6 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 print("Search For Jobs\n")
 search_job_value = input("With all of these words: ")
 search_word_value = input("With at least one of these words: ")
+file_name = input("Save file with name: ")
 print("\n")
 
 DRIVER_PATH = './chromedriver'
@@ -51,14 +54,12 @@ close_popup.click()
 #go through job cards
 driver.implicitly_wait(3)
 
-titles = []
-companies = []
-locations = []
+jobs = []
+
 links = []
-reviews = [] 
-salaries = []
 descriptions = []
 
+print ("Scraping the following jobs: ")
 for i in range(0, 20):
     job_card = driver.find_elements_by_xpath('//div[contains(@class,"clickcard")]')
 
@@ -68,19 +69,16 @@ for i in range(0, 20):
             review = job.find_element_by_xpath('.//span[@class="ratingsContent"]').text
         except:
             review = "None" 
-        reviews.append(review)
 
         try: 
             salary = job.find_element_by_xpath('.//span[@class="salaryText"]').text
         except:
             salary = "None" 
-        salaries.append(salary)
 
         try: 
             location = job.find_element_by_xpath('.//span[@class="location"]').text
         except:
             location = "None" 
-        locations.append(location)
 
         #get the title of the job 
         try:
@@ -88,13 +86,14 @@ for i in range(0, 20):
         except:
             title = job.find_element_by_xpath('.//h2[@class="title"]//a').get_attribute(name="title")
         print(title)
-        titles.append(title)
 
         link = job.find_element_by_xpath('.//h2[@class="title"]//a').get_attribute(name="href")
         links.append(link)
 
         company = job.find_element_by_xpath('.//span[@class="company"]').text
-        companies.append(company)
+
+        job = Job(title, company, location, link, review, salary)
+        jobs.append(job)
 
     #move to another page
     try:
@@ -107,25 +106,19 @@ for i in range(0, 20):
     print("Page: {}".format(str(i+2)))
 
 print("Scraping Job Descriptions...")
-descriptions = []
+
+count = 0
 for link in links:
     driver.get(link)
     job_description = driver.find_element_by_xpath('//div[@id="jobDescriptionText"]').text
+    jobs[count].add_description(job_description)
+    count = count + 1
+    
+with open(file_name + '.json', 'w') as json_file:
+    data = {}
+    data["Jobs"] = []
+    for job in jobs:
+        data["Jobs"].append(job.serialize())
+    json.dump(data, json_file, sort_keys=True, indent=4)
 
-    descriptions.append(job_description)
-
-dataframe_da = pd.DataFrame()
-dataframe_da['Title'] = titles
-dataframe_da['Company'] = companies
-dataframe_da['Location'] = "Toronto, Ontario"
-dataframe_da['Link'] = links
-dataframe_da['Review'] = reviews
-dataframe_da['Salary'] = salaries
-dataframe_da['Description'] = descriptions
-
-#write data to an excel spreadsheet
-writer = pd.ExcelWriter('output.xlsx')
-dataframe_da.to_excel(writer, 'Jobs')
-
-writer.save()
-print("\nData written to an Excel Sheet")
+print("Jobs written to JSON file: " + file_name + ".json")
