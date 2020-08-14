@@ -1,6 +1,6 @@
 import time
-import json
 import pandas as pd
+import re
 
 from job import Job
 from selenium.webdriver.common.by import By
@@ -17,7 +17,12 @@ file_name = input("Save file with name: ")
 print("\n")
 
 DRIVER_PATH = './chromedriver'
-driver = webdriver.Chrome(executable_path=DRIVER_PATH)
+# hide the chrome window using options 
+options = webdriver.ChromeOptions()
+options.add_argument('headless')
+options.add_argument('window-size=1920x1080')
+options.add_argument("disable-gpu")
+driver = webdriver.Chrome(executable_path=DRIVER_PATH, options=options)
 
 driver.get('https://ca.indeed.com')
 
@@ -59,7 +64,7 @@ jobs = []
 links = []
 descriptions = []
 
-print ("Scraping the following jobs: ")
+print ("Scraping the following jobs: \n")
 for i in range(0, 20):
     job_card = driver.find_elements_by_xpath('//div[contains(@class,"clickcard")]')
 
@@ -103,9 +108,9 @@ for i in range(0, 20):
         print("\nFinished Scraping Jobs")
         break
     #print the page you're on 
-    print("Page: {}".format(str(i+2)))
+    print("\nPage: {}".format(str(i+2)))
 
-print("Scraping Job Descriptions...")
+print("Scraping Job Descriptions...\n")
 
 count = 0
 for link in links:
@@ -113,12 +118,58 @@ for link in links:
     job_description = driver.find_element_by_xpath('//div[@id="jobDescriptionText"]').text
     jobs[count].add_description(job_description)
     count = count + 1
-    
-with open(file_name + '.json', 'w') as json_file:
-    data = {}
-    data["Jobs"] = []
-    for job in jobs:
-        data["Jobs"].append(job.serialize())
-    json.dump(data, json_file, sort_keys=True, indent=4)
 
-print("Jobs written to JSON file: " + file_name + ".json")
+#create an HTML file to view the data nicely
+html = ""
+
+htmlBeginning = '''\
+<html>
+  <head></head>
+  <h1>Jobs:</h1>
+  <body>
+'''
+
+htmlMiddle = ""
+for job in jobs:
+    title = job.get_title()
+    company = job.get_company()
+    review = job.get_review()
+    location = job.get_location()
+    salary = job.get_salary()
+    description = job.get_description()
+    link = job.get_link()
+
+    if review == "None":
+        review = "No posted company review"
+    if salary == "None": 
+        salary = "No posted job salary"
+    if location == "None": 
+        location = "No posted location"
+
+    #replace new line characters with a break to make it display nicer on the html
+    description = re.sub(r'(\n)', r'\1<br>', description)
+
+    htmlMiddle += '''\
+        <p>----------------------------------------------------------------------------------------------</p>
+        <h2>{title} - {salary}</h2>
+        <h3>Company: {company} - {review}</h3>
+        <h4>Location: {location}</h4>
+        <p>{description}</p>
+        <a href="{link}">Link</a><br><br>
+        <p>----------------------------------------------------------------------------------------------</p>
+    '''.format(title = title, company = company, review = review, location = location,
+               salary = salary, description = description, link = link)
+
+htmlEnding = '''\
+  </body>
+</html>
+'''
+
+html = htmlBeginning + htmlMiddle + htmlEnding
+
+with open(file_name + ".html", "w") as html_file: 
+    html_file.write(html)
+
+print("Jobs written to HTML file: " + file_name + ".html")
+
+driver.quit()

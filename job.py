@@ -11,22 +11,23 @@ class Job:
     def add_description(self, description):
         self.description = description
 
-    def serialize(self):
-        return {
-            "title": self.title,
-            "company": self.company,
-            "location": self.location,
-            "link": self.link,
-            "review": self.review,
-            "salary": self.salary,
-            "description": self.description
-        }
+    def get_title(self):
+        return self.title
 
-    def from_json(self, json_):
-        self.title = json_["title"]
-        self.company = json_["company"]
-        self.location = json_["location"]
-        self.link = json_["link"]
-        self.review = json_["review"]
-        self.salary = json_["salary"]
-        self.description = json_["description"]
+    def get_company(self):
+        return self.company
+
+    def get_location(self):
+        return self.location
+
+    def get_link(self):
+        return self.link
+
+    def get_review(self):
+        return self.review
+
+    def get_salary(self):
+        return self.salary
+
+    def get_description(self):
+        return self.description
